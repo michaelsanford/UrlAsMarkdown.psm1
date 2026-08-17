@@ -14,3 +14,5 @@
 *.user
 Thumbs.db
 desktop.ini
+
+testResults.xml

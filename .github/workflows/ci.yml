@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Pinned deliberately; bump in one place when you want a newer analyzer or test runner.
+  PESTER_VERSION: 6.1.0
+  PSSCRIPTANALYZER_VERSION: 1.25.0
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+      # actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install analysis and test dependencies
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -RequiredVersion $env:PSSCRIPTANALYZER_VERSION -Scope CurrentUser -Force
+          Install-Module Pester -RequiredVersion $env:PESTER_VERSION -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Lint (PSScriptAnalyzer)
+        shell: pwsh
+        run: |
+          $findings = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error, Warning, Information
+          if ($findings) {
+              $findings | Format-Table -AutoSize RuleName, Severity, ScriptName, Line, Message | Out-String -Width 200 | Write-Host
+              throw "PSScriptAnalyzer reported $($findings.Count) finding(s)."
+          }
+          Write-Host 'PSScriptAnalyzer: clean.'
+
+      - name: Validate manifest
+        shell: pwsh
+        run: Test-ModuleManifest ./UrlAsMarkdown/UrlAsMarkdown.psd1 | Format-List Name, Version, ExportedFunctions
+
+      - name: Import module and check exported surface
+        shell: pwsh
+        run: |
+          Import-Module ./UrlAsMarkdown/UrlAsMarkdown.psd1 -Force -ErrorAction Stop
+          $exported = (Get-Module UrlAsMarkdown).ExportedFunctions.Keys
+          if ($exported -ne 'Get-UrlAsMarkdown') {
+              throw "Unexpected exported functions: $($exported -join ', ')"
+          }
+          Write-Host "Exports: $exported"
+
+      - name: Run Pester
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tests'
+          $config.Run.Throw = $true
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = './testResults.xml'
+          Invoke-Pester -Configuration $config

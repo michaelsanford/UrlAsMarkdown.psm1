@@ -120,11 +120,32 @@ lists are flattened and tables inside tables are not handled.
 ## Development
 
 ```powershell
-Invoke-ScriptAnalyzer -Path .\UrlAsMarkdown -Severity Error,Warning,Information
+Install-Module Pester, PSScriptAnalyzer -Scope CurrentUser   # once
+
+Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error, Warning, Information
+Invoke-Pester -Path .\tests
 ```
 
-The module lints clean at those severities; keep it that way. Bump `ModuleVersion` in
-`UrlAsMarkdown.psd1` alongside any behaviour change and tag the release to match.
+The repository lints clean at those severities and all tests pass; keep it that way.
+Bump `ModuleVersion` in `UrlAsMarkdown.psd1` alongside any behaviour change and tag the
+release to match.
+
+### Tests
+
+`tests/UrlAsMarkdown.Tests.ps1` covers the exported surface, each conversion rule, and
+the `Get-UrlAsMarkdown` wrapper. The private helpers are exercised through
+`InModuleScope`, and `Invoke-WebRequest` is mocked — **the suite never touches the
+network**, so it is deterministic and safe to run offline.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request to `main`, across
+Windows, Linux, and macOS: PSScriptAnalyzer (any finding fails the build), manifest
+validation, an import-and-check-exports step, and Pester. Actions are pinned to commit
+SHAs; analyzer and Pester versions are pinned in the workflow's `env` block.
+
+`.github/workflows/publish.yml.disabled` is an inert scaffold for publishing to
+PSGallery on a version tag. See the comments at the top of that file to enable it.
 
 ## License
 

@@ -1,0 +1,74 @@
+# PSGallery publish — SCAFFOLD, CURRENTLY DISABLED.
+#
+# GitHub only reads `.yml`/`.yaml` files in .github/workflows, so this file is inert
+# as named. To enable:
+#
+#   1. Create a PSGallery API key (https://www.powershellgallery.com/account/apikeys)
+#      and add it as the repository secret NUGET_API_KEY.
+#   2. Rename this file to publish.yml.
+#   3. Confirm ModuleVersion in UrlAsMarkdown/UrlAsMarkdown.psd1 is the version you
+#      intend to publish, then push a matching tag: git tag v1.0.1 && git push --tags
+#
+# The guard job below fails the run if the tag and ModuleVersion disagree, so a
+# mistyped tag cannot publish the wrong version. PSGallery releases are permanent —
+# a version can be unlisted but never replaced — hence the belt-and-braces check.
+
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PESTER_VERSION: 6.1.0
+  PSSCRIPTANALYZER_VERSION: 1.25.0
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: psgallery   # optional: add a required reviewer here for a manual gate
+
+    steps:
+      # actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -RequiredVersion $env:PSSCRIPTANALYZER_VERSION -Scope CurrentUser -Force
+          Install-Module Pester -RequiredVersion $env:PESTER_VERSION -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Verify tag matches ModuleVersion
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}' -replace '^v', ''
+          $manifestVersion = (Test-ModuleManifest ./UrlAsMarkdown/UrlAsMarkdown.psd1).Version.ToString()
+          if ($tag -ne $manifestVersion) {
+              throw "Tag '$tag' does not match ModuleVersion '$manifestVersion'."
+          }
+          Write-Host "Version check passed: $manifestVersion"
+
+      - name: Lint and test before publishing
+        shell: pwsh
+        run: |
+          $findings = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error, Warning, Information
+          if ($findings) { throw "PSScriptAnalyzer reported $($findings.Count) finding(s)." }
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tests'
+          $config.Run.Throw = $true
+          Invoke-Pester -Configuration $config
+
+      - name: Publish to PSGallery
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if (-not $env:NUGET_API_KEY) { throw 'NUGET_API_KEY secret is not set.' }
+          Publish-Module -Path ./UrlAsMarkdown -NuGetApiKey $env:NUGET_API_KEY -Verbose

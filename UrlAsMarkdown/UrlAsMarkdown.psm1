@@ -18,10 +18,15 @@ function ConvertFrom-HtmlEntity {
     return $Text
 }
 
+function Protect-AngleBracket {
+    param([string]$Text)
+    return $Text -replace '<', '%%LT%%' -replace '>', '%%GT%%'
+}
+
 function Get-HtmlTextContent {
     param([string]$Html)
     $text = [regex]::Replace($Html, '<[^>]+>', ' ')
-    $text = ConvertFrom-HtmlEntity $text
+    $text = Protect-AngleBracket (ConvertFrom-HtmlEntity $text)
     $text = [regex]::Replace($text, '[ \t]+', ' ')
     return $text.Trim()
 }
@@ -152,13 +157,13 @@ function ConvertFrom-HtmlToMarkdown {
 
     $Html = [regex]::Replace($Html, '<pre\b[^>]*><code\b[^>]*>(.*?)</code></pre>', {
         param($m)
-        $code = ConvertFrom-HtmlEntity ($m.Groups[1].Value -replace '<[^>]+>', '')
-        "`n`n``````n$code`n```````n`n"
+        $code = Protect-AngleBracket (ConvertFrom-HtmlEntity ($m.Groups[1].Value -replace '<[^>]+>', ''))
+        "`n`n```````n$code`n```````n`n"
     }, [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
     $Html = [regex]::Replace($Html, '<code\b[^>]*>(.*?)</code>', {
         param($m)
-        $code = ConvertFrom-HtmlEntity ($m.Groups[1].Value -replace '<[^>]+>', '')
+        $code = Protect-AngleBracket (ConvertFrom-HtmlEntity ($m.Groups[1].Value -replace '<[^>]+>', ''))
         "``$code``"
     }, [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
@@ -176,6 +181,7 @@ function ConvertFrom-HtmlToMarkdown {
 
     $Html = $Html -replace '%%TABLE_START%%', '' -replace '%%TABLE_END%%', ''
     $Html = $Html -replace '%%LIST_START%%', '' -replace '%%LIST_END%%', ''
+    $Html = $Html -replace '%%LT%%', '<' -replace '%%GT%%', '>'
     $Html = [regex]::Replace($Html, '(\r?\n){3,}', "`n`n")
 
     return $Html.Trim()
