@@ -27,7 +27,7 @@ Author = 'Michael Sanford'
 CompanyName = 'Unknown'
 
 # Copyright statement for this module
-Copyright = '(c) Michael Sanford. All rights reserved.'
+Copyright = '(c) 2026 Michael Sanford. Licensed under the MIT License.'
 
 # Description of the functionality provided by this module
 Description = 'Fetches web pages and converts their HTML content to clean Markdown suitable for LLM context.'
@@ -98,10 +98,10 @@ PrivateData = @{
         Tags = 'Markdown', 'HTML', 'Web', 'LLM'
 
         # A URL to the license for this module.
-        # LicenseUri = ''
+        LicenseUri = 'https://github.com/michaelsanford/UrlAsMarkdown.psm1/blob/main/LICENSE'
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/michaelsanford/UrlAsMarkdown.psm1'
 
         # A URL to an icon representing this module.
         # IconUri = ''

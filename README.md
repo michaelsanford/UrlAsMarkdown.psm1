@@ -9,15 +9,33 @@ No external dependencies — regex and `System.Net.WebUtility` only.
 
 ## Install
 
-Clone into any directory on your `$env:PSModulePath`, keeping the inner `UrlAsMarkdown`
-folder name intact (PowerShell matches the folder name to the module name for autoloading):
+PowerShell discovers modules by scanning the directories in `$env:PSModulePath` for
+folders whose **name matches the module name**. So whichever method you pick, the folder
+that lands on your module path must be called `UrlAsMarkdown` — the repository directory
+is named `UrlAsMarkdown.psm1` (after the GitHub repo) and cannot be used directly.
+
+Check where your personal module path points:
 
 ```powershell
-git clone git@github.com:michaelsanford/UrlAsMarkdown.psm1.git
-Copy-Item .\UrlAsMarkdown.psm1\UrlAsMarkdown -Destination "$HOME\Documents\PowerShell\Modules\" -Recurse
+$env:PSModulePath -split [IO.Path]::PathSeparator
 ```
 
-Or symlink the module folder at your module path to a working clone:
+On PowerShell 7 the per-user directory is `$HOME\Documents\PowerShell\Modules` (Windows)
+or `~/.local/share/powershell/Modules` (Linux/macOS). Create it if it does not exist.
+
+### Option 1 — copy the module folder (simplest)
+
+```powershell
+git clone https://github.com/michaelsanford/UrlAsMarkdown.psm1.git
+Copy-Item .\UrlAsMarkdown.psm1\UrlAsMarkdown `
+    -Destination "$HOME\Documents\PowerShell\Modules\" -Recurse
+```
+
+Update by re-pulling and re-copying.
+
+### Option 2 — symlink to a working clone (best for development)
+
+Edits in the clone take effect immediately, and `git pull` is the update path.
 
 ```powershell
 New-Item -ItemType SymbolicLink `
@@ -25,8 +43,37 @@ New-Item -ItemType SymbolicLink `
     -Target "<clone>\UrlAsMarkdown"
 ```
 
-No `Import-Module` or `$PROFILE` entry is needed — the manifest declares its exported
-function, so PowerShell autoloads the module the first time you call it.
+Creating symlinks on Windows requires Developer Mode or an elevated prompt; use
+`-ItemType Junction` instead if neither is available. Avoid placing the clone itself
+inside a synced folder (OneDrive, Dropbox) — sync racing a checkout can corrupt `.git`.
+
+### Option 3 — add the clone to `$env:PSModulePath`
+
+Because the repository root *contains* the `UrlAsMarkdown` folder, the root itself works
+as a module path entry. Nothing is copied or linked. Add to your `$PROFILE`:
+
+```powershell
+$env:PSModulePath += [IO.Path]::PathSeparator + "<clone>"
+```
+
+### Verify
+
+```powershell
+Get-Module UrlAsMarkdown -ListAvailable
+Get-Command Get-UrlAsMarkdown
+```
+
+No `Import-Module` or `$PROFILE` entry is needed for options 1 and 2 — the manifest
+declares its exported function, so PowerShell autoloads the module the first time you
+call `Get-UrlAsMarkdown`.
+
+### Uninstall
+
+Delete the folder (or symlink) from your module path:
+
+```powershell
+Remove-Item "$HOME\Documents\PowerShell\Modules\UrlAsMarkdown" -Recurse -Force
+```
 
 ## Usage
 
@@ -78,3 +125,7 @@ Invoke-ScriptAnalyzer -Path .\UrlAsMarkdown -Severity Error,Warning,Information
 
 The module lints clean at those severities; keep it that way. Bump `ModuleVersion` in
 `UrlAsMarkdown.psd1` alongside any behaviour change and tag the release to match.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
