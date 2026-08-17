@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PowerShell 7](https://img.shields.io/badge/PowerShell-7%2B-5391FE.svg)](https://github.com/PowerShell/PowerShell)
 
+**[Documentation &amp; overview &rarr;](https://www.michaelsanford.com/UrlAsMarkdown.psm1/)**
+
 A PowerShell 7 module that fetches a web page and converts its HTML to clean Markdown
 suitable for LLM context. Scripts, styles, nav/header/footer chrome, and common
 sidebar/cookie/newsletter blocks are stripped; headings, tables, lists, links,
