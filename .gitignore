@@ -1,0 +1,16 @@
+# PowerShell / build output
+*.nupkg
+/out/
+/dist/
+
+# Converted output produced while testing
+*.md
+!README.md
+
+# Editor / OS
+.vs/
+.vscode/
+*.suo
+*.user
+Thumbs.db
+desktop.ini
