@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UrlAsMarkdown — any web page, clean Markdown</title>
+<meta name="description" content="A dependency-free PowerShell 7 module that turns any web page into clean Markdown suitable for LLM context.">
+<style>
+:root {
+  --bg:        #0b0e14;
+  --bg-panel:  #10141c;
+  --bg-inset:  #070910;
+  --chrome:    #1a1f2b;
+  --line:      #232a38;
+  --fg:        #c9d3e0;
+  --fg-dim:    #78849a;
+  --green:     #6ee787;
+  --cyan:      #56d4dd;
+  --amber:     #e3b341;
+  --magenta:   #d2a8ff;
+  --red:       #ff7b72;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: 0 1.25rem 5rem;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1.65;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(110, 231, 135, .07), transparent 70%),
+    repeating-linear-gradient(to bottom, rgba(255,255,255,.014) 0 1px, transparent 1px 3px);
+}
+
+.wrap { max-width: 860px; margin: 0 auto; }
+
+a { color: var(--cyan); text-decoration: none; border-bottom: 1px solid rgba(86, 212, 221, .3); }
+a:hover { border-bottom-color: var(--cyan); }
+
+/* ---------- masthead ---------- */
+
+header { padding: 4.5rem 0 2.5rem; }
+
+pre.logo {
+  margin: 0 0 1.5rem;
+  color: var(--green);
+  font-size: clamp(5px, 1.62vw, 13px);
+  line-height: 1.15;
+  overflow-x: auto;
+  text-shadow: 0 0 22px rgba(110, 231, 135, .35);
+}
+
+h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.tagline {
+  margin: 0 0 .4rem;
+  font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+  color: var(--fg);
+}
+.tagline .accent { color: var(--green); }
+
+.sub { margin: 0 0 1.75rem; color: var(--fg-dim); max-width: 62ch; }
+
+.badges { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.75rem; }
+.badge {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: .12rem .55rem;
+  font-size: .78rem;
+  color: var(--fg-dim);
+  background: var(--bg-panel);
+}
+.badge b { color: var(--green); font-weight: 600; }
+.badge.b-blue b { color: var(--cyan); }
+.badge.b-amber b { color: var(--amber); }
+
+.cta { display: flex; flex-wrap: wrap; gap: .75rem; }
+.btn {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: .5rem 1.1rem;
+  background: var(--bg-panel);
+  color: var(--fg);
+  border-bottom-width: 1px;
+}
+.btn:hover { border-color: var(--green); color: var(--green); background: #121a17; }
+.btn.primary { border-color: rgba(110,231,135,.45); color: var(--green); }
+.btn.primary:hover { background: #121a17; }
+
+/* ---------- terminal ---------- */
+
+.term {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-inset);
+  overflow: hidden;
+  margin: 0 0 1.25rem;
+  box-shadow: 0 14px 40px rgba(0,0,0,.45);
+}
+.term-bar {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .5rem .75rem;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--line);
+}
+.dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+.term-title { margin-left: .5rem; font-size: .78rem; color: var(--fg-dim); }
+
+.term pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-size: .875rem;
+  line-height: 1.7;
+  white-space: pre;
+}
+.p  { color: var(--green); }        /* prompt        */
+.c  { color: var(--fg); }           /* command       */
+.a  { color: var(--magenta); }      /* argument      */
+.s  { color: var(--amber); }        /* string        */
+.o  { color: var(--fg-dim); }       /* output/dim    */
+.h  { color: var(--cyan); }         /* markdown head */
+.e  { color: var(--red); }
+.cursor {
+  display: inline-block; width: .58em; height: 1.05em;
+  background: var(--green); vertical-align: -.19em;
+  animation: blink 1.15s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+
+/* ---------- sections ---------- */
+
+section { padding-top: 3.25rem; }
+
+h2 {
+  font-size: 1rem;
+  margin: 0 0 1.25rem;
+  color: var(--fg);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+h2::before { content: "## "; color: var(--green); }
+
+h3 { font-size: .9rem; margin: 1.75rem 0 .6rem; color: var(--amber); font-weight: 600; }
+h3::before { content: "### "; color: var(--line); }
+
+p { margin: 0 0 1rem; }
+p.lead { color: var(--fg-dim); max-width: 68ch; }
+
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--green);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  padding: 1rem 1.1rem;
+}
+.card h4 { margin: 0 0 .4rem; font-size: .9rem; color: var(--fg); font-weight: 600; }
+.card p { margin: 0; color: var(--fg-dim); font-size: .855rem; line-height: 1.6; }
+.card.c-cyan    { border-left-color: var(--cyan); }
+.card.c-amber   { border-left-color: var(--amber); }
+.card.c-magenta { border-left-color: var(--magenta); }
+
+.split { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; align-items: start; }
+@media (max-width: 680px) { .split { grid-template-columns: 1fr; } }
+
+table { width: 100%; border-collapse: collapse; font-size: .855rem; margin-bottom: 1rem; }
+th, td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--green); font-weight: 600; }
+td:first-child { color: var(--amber); white-space: nowrap; }
+td { color: var(--fg-dim); }
+
+footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  color: var(--fg-dim);
+  font-size: .82rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1.25rem;
+  justify-content: space-between;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<pre class="logo" aria-hidden="true">
+ _   _      _ _   __  __            _       _
+| | | |_ __| | | |  \/  | __ _ _ __| | ____| | _____      ___ __
+| | | | '__| | | | |\/| |/ _` | '__| |/ / _` |/ _ \ \ /\ / / '_ \
+| |_| | |  | | | | |  | | (_| | |  |   < (_| | (_) \ V  V /| | | |
+ \___/|_|  |_|_| |_|  |_|\__,_|_|  |_|\_\__,_|\___/ \_/\_/ |_| |_|
+</pre>
+
+<h1>UrlAsMarkdown</h1>
+
+<p class="tagline">Any web page &rarr; <span class="accent">clean Markdown</span>, from your prompt.</p>
+
+<p class="sub">
+A PowerShell 7 module that fetches a page, throws away the chrome, and hands you
+Markdown worth pasting into an LLM context window. One command. No dependencies.
+</p>
+
+<div class="badges">
+  <span class="badge"><b>v1.0.1</b></span>
+  <span class="badge b-blue">PowerShell <b>7+</b></span>
+  <span class="badge b-amber">MIT</span>
+  <span class="badge"><b>70</b> tests</span>
+  <span class="badge b-blue">Windows &middot; Linux &middot; macOS</span>
+  <span class="badge"><b>0</b> dependencies</span>
+</div>
+
+<div class="cta">
+  <a class="btn primary" href="https://github.com/michaelsanford/UrlAsMarkdown.psm1">View on GitHub</a>
+  <a class="btn" href="#install">Install</a>
+  <a class="btn" href="#usage">Usage</a>
+</div>
+</header>
+
+<div class="term">
+  <div class="term-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="term-title">pwsh — UrlAsMarkdown</span>
+  </div>
+<pre><span class="p">PS&gt;</span> <span class="c">Get-UrlAsMarkdown</span> <span class="s">https://example.com/blog/why-markdown</span>
+
+<span class="h"># Why Markdown Wins</span>
+
+Every token you spend on <span class="o">&lt;div class="wrapper"&gt;</span> is a token you
+don't spend on thinking.
+
+<span class="h">## The short version</span>
+
+<span class="o">- Structure survives the trip</span>
+<span class="o">- Navigation, cookie banners and scripts do not</span>
+<span class="o">- Tables stay tables</span>
+
+<span class="p">PS&gt;</span> <span class="c">Get-UrlAsMarkdown</span> <span class="s">$url</span> <span class="a">-Save -IncludeSource</span>
+<span class="o">    Directory: C:\notes</span>
+<span class="o">    blog-why-markdown.md    4.2 KB</span>
+
+<span class="p">PS&gt;</span> <span class="cursor"></span>
+</pre>
+</div>
+
+<section id="why">
+<h2>Why it exists</h2>
+<p class="lead">
+Pasting a raw web page into a model wastes context on markup and navigation, and often
+buries the part you actually wanted. This does the boring cleanup, predictably, from the
+shell you already have open.
+</p>
+
+<div class="grid">
+  <div class="card">
+    <h4>Content, not chrome</h4>
+    <p>Prefers <code>&lt;main&gt;</code> or <code>&lt;article&gt;</code>, then strips scripts, styles, nav, headers, footers, and the usual cookie / newsletter / sidebar furniture.</p>
+  </div>
+  <div class="card c-cyan">
+    <h4>Structure preserved</h4>
+    <p>Headings, ordered and unordered lists, tables with header separators, blockquotes, links, bold, italics, inline code and fenced blocks all survive.</p>
+  </div>
+  <div class="card c-amber">
+    <h4>Nothing to install</h4>
+    <p>No HTML parser, no NuGet package, no network dependency beyond the page itself. Just regex and <code>System.Net.WebUtility</code> on stock PowerShell 7.</p>
+  </div>
+  <div class="card c-magenta">
+    <h4>Pipeline native</h4>
+    <p>Returns a string by default so it composes with <code>Set-Clipboard</code>, <code>Out-File</code>, or anything else. Accepts URLs from the pipeline. Writes files only when asked.</p>
+  </div>
+</div>
+</section>
+
+<section id="before-after">
+<h2>In &rarr; out</h2>
+<div class="split">
+  <div class="term">
+    <div class="term-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="term-title">page.html</span>
+    </div>
+<pre><span class="o">&lt;nav&gt;</span>…menu…<span class="o">&lt;/nav&gt;</span>
+<span class="o">&lt;main&gt;</span>
+  <span class="o">&lt;h2&gt;</span>Limits<span class="o">&lt;/h2&gt;</span>
+  <span class="o">&lt;table&gt;</span>
+    <span class="o">&lt;tr&gt;&lt;th&gt;</span>Tier<span class="o">&lt;/th&gt;</span>
+        <span class="o">&lt;th&gt;</span>Rate<span class="o">&lt;/th&gt;&lt;/tr&gt;</span>
+    <span class="o">&lt;tr&gt;&lt;td&gt;</span>Free<span class="o">&lt;/td&gt;</span>
+        <span class="o">&lt;td&gt;</span>60/min<span class="o">&lt;/td&gt;&lt;/tr&gt;</span>
+  <span class="o">&lt;/table&gt;</span>
+  <span class="o">&lt;p&gt;</span>Use <span class="o">&lt;code&gt;</span>&amp;lt;div&amp;gt;<span class="o">&lt;/code&gt;</span>.<span class="o">&lt;/p&gt;</span>
+<span class="o">&lt;/main&gt;</span>
+<span class="o">&lt;footer&gt;</span>©<span class="o">&lt;/footer&gt;</span>
+</pre>
+  </div>
+  <div class="term">
+    <div class="term-bar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="term-title">page.md</span>
+    </div>
+<pre><span class="h">## Limits</span>
+
+| Tier | Rate |
+| --- | --- |
+| Free | 60/min |
+
+Use `&lt;div&gt;`.
+
+
+
+<span class="o">&nbsp;</span>
+</pre>
+  </div>
+</div>
+<p class="lead" style="margin-top:.75rem">
+Note the two easy things to get wrong: the header separator row is sized to the header,
+and an escaped <code>&amp;lt;div&amp;gt;</code> decodes to literal text instead of being
+swallowed by the tag stripper. Both are covered by tests.
+</p>
+</section>
+
+<section id="install">
+<h2>Install</h2>
+<p class="lead">
+PowerShell finds modules by folder name, so the folder that lands on your module path
+must be called <code>UrlAsMarkdown</code>.
+</p>
+
+<h3>Copy the module folder</h3>
+<div class="term">
+  <div class="term-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="term-title">pwsh</span>
+  </div>
+<pre><span class="p">PS&gt;</span> <span class="c">git clone</span> <span class="s">https://github.com/michaelsanford/UrlAsMarkdown.psm1.git</span>
+<span class="p">PS&gt;</span> <span class="c">Copy-Item</span> <span class="s">.\UrlAsMarkdown.psm1\UrlAsMarkdown</span> <span class="a">-Recurse</span> `
+       <span class="a">-Destination</span> <span class="s">"$HOME\Documents\PowerShell\Modules\"</span>
+</pre>
+</div>
+
+<h3>Or symlink a working clone</h3>
+<div class="term">
+  <div class="term-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="term-title">pwsh</span>
+  </div>
+<pre><span class="p">PS&gt;</span> <span class="c">New-Item</span> <span class="a">-ItemType</span> <span class="s">SymbolicLink</span> `
+       <span class="a">-Path</span>   <span class="s">"$HOME\Documents\PowerShell\Modules\UrlAsMarkdown"</span> `
+       <span class="a">-Target</span> <span class="s">"&lt;clone&gt;\UrlAsMarkdown"</span>
+</pre>
+</div>
+
+<p class="lead">
+No <code>Import-Module</code> and no profile edit: the manifest declares its exported
+function, so PowerShell autoloads it the first time you call it.
+</p>
+</section>
+
+<section id="usage">
+<h2>Usage</h2>
+
+<table>
+  <thead><tr><th>Parameter</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td>-Url</td><td>The page to convert. Accepts pipeline input, by value or property name.</td></tr>
+    <tr><td>-OutputPath</td><td>File to write. Implies <code>-Save</code>.</td></tr>
+    <tr><td>-Save</td><td>Write a file; without <code>-OutputPath</code> the name comes from the URL slug.</td></tr>
+    <tr><td>-IncludeSource</td><td>Prepend a <code>&gt; Source: &lt;url&gt;</code> line.</td></tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-bar">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="term-title">recipes</span>
+  </div>
+<pre><span class="o"># straight to the clipboard, ready to paste into a model</span>
+<span class="p">PS&gt;</span> <span class="c">Get-UrlAsMarkdown</span> <span class="s">$url</span> | <span class="c">Set-Clipboard</span>
+
+<span class="o"># a folder of reference docs, each named from its slug</span>
+<span class="p">PS&gt;</span> <span class="c">$urls</span> | <span class="c">Get-UrlAsMarkdown</span> <span class="a">-Save -IncludeSource</span>
+
+<span class="o"># one file, explicitly named</span>
+<span class="p">PS&gt;</span> <span class="c">Get-UrlAsMarkdown</span> <span class="s">$url</span> <span class="a">-OutputPath</span> <span class="s">notes\api.md</span>
+
+<span class="o"># see what it is doing</span>
+<span class="p">PS&gt;</span> <span class="c">Get-UrlAsMarkdown</span> <span class="s">$url</span> <span class="a">-Verbose</span>
+<span class="o">VERBOSE: Fetching: https://…</span>
+<span class="o">VERBOSE: Converting to Markdown...</span>
+</pre>
+</div>
+</section>
+
+<section id="honest">
+<h2>Honest limits</h2>
+<p class="lead">
+The converter is regex-based, not a DOM parser. That is what keeps it dependency-free and
+fast, and it is also the trade: nested lists are flattened, tables inside tables are not
+handled, and pathological markup can convert imperfectly. For most articles and
+documentation pages it is exactly what you want. For scraping arbitrary hostile HTML,
+reach for a real parser.
+</p>
+</section>
+
+<footer>
+  <span>MIT licensed &middot; &copy; 2026 Michael Sanford</span>
+  <span><a href="https://github.com/michaelsanford/UrlAsMarkdown.psm1">github.com/michaelsanford/UrlAsMarkdown.psm1</a></span>
+</footer>
+
+</div>
+</body>
+</html>
